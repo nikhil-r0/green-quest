@@ -17,7 +17,7 @@ import { onAuthStateChanged } from 'firebase/auth';
 export default function TabLayout() {
   const segments = useSegments();
   const lastSegment = segments[segments.length - 1];
-  const showFab = lastSegment !== 'market' && lastSegment !== 'cameraTab';
+  const showFab = lastSegment !== 'market' && lastSegment !== 'cameraTab' && lastSegment !== '[plantId]'&& lastSegment !== 'chatbot';
   const router = useRouter();
   const [ecoCoins, setEcoCoins] = useState(0);
 

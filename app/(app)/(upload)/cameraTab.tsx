@@ -12,6 +12,7 @@ import {
   StyleSheet,
   Text,
   View,
+  TouchableOpacity,
 } from "react-native";
 import { Image } from "expo-image";
 import * as FileSystem from "expo-file-system";
@@ -23,6 +24,7 @@ import { Video } from "expo-av";
 import React from "react";
 import { api } from "@/constants/Api";
 import { auth } from "@/firebaseConfig";
+import LoadingIcon from "@/components/LoadingIcon"; 
 
 export default function App() {
   const [permission, requestPermission] = useCameraPermissions();
@@ -35,6 +37,7 @@ export default function App() {
   const [activeCapture, setActiveCapture] = useState<"none" | "picture" | "video">("none");
   const [latitude, setLatitude] = useState(0);
   const [longitude, setLongitude] = useState(0);
+  const [uploading, setUploading] = useState(false);
 
   if (!auth.currentUser || !permission) return null;
   if (!permission.granted) {
@@ -60,6 +63,7 @@ export default function App() {
   };
 
   const uploadMedia = async (photoUri: string | null, videoUri: string | null) => {
+    setUploading(true);
     const formData = new FormData();
     formData.append("user_id", auth.currentUser!.uid);
     formData.append("lat", latitude.toString());
@@ -96,13 +100,26 @@ export default function App() {
       try {
         const json = JSON.parse(text);
         console.log("Upload response:", json);
+
+        if (json.success) {
+          alert(`✅ ${json.message}\nEco Points Earned: ${json.eco_points_earned}`);
+        } else {
+          alert(`❌ ${json.error || 'Unknown error'}`);
+        }
+
       } catch (e) {
-        console.error("Unexpected server response (not JSON):", text);
+        console.error("Non-JSON response:", text);
+        alert("⚠️ Unexpected response from server.");
       }
-    } catch (err) {
+
+    } catch (err: any) {
       console.error("Upload error:", err);
+      alert("❌ Upload failed. Please try again.");
+    } finally {
+    setUploading(false); // Stop loading
     }
   };
+
 
   const takePicture = async () => {
     const photo = await ref.current?.takePictureAsync();
@@ -143,18 +160,21 @@ export default function App() {
             <Pressable onPress={toggleFacing}>
               <FontAwesome6 name="rotate-left" size={32} color="white" />
             </Pressable>
-            <Pressable
-              onPress={() => (activeCapture === "picture" ? takePicture() : recordVideo())}
-            >
+            <Pressable onPress={() => (activeCapture === "picture" ? takePicture() : recordVideo())}>
               <View style={styles.shutterBtn}>
                 <View style={styles.shutterBtnInner} />
               </View>
             </Pressable>
-            <Pressable onPress={() => setActiveCapture("none")}>  
-              <AntDesign name="closecircleo" size={30} color="white" />
-            </Pressable>
           </View>
         </CameraView>
+      );
+    }
+    
+    if (uploading) {
+      return (
+        <View style={styles.fullScreenCenter}>
+          <LoadingIcon />
+        </View>
       );
     }
 
@@ -221,10 +241,29 @@ export default function App() {
     );
   };
 
-  return activeCapture !== "none" ? (
-    <View style={{ flex: 1 }}>{renderMedia()}</View>
-  ) : (
-    <ScrollView contentContainerStyle={styles.container}>{renderMedia()}</ScrollView>
+  return (
+    <View style={{ flex: 1 }}>
+      {/* Cross Close Button */}
+      {(uri || videoUri || activeCapture !== "none") && (
+        <TouchableOpacity
+          style={styles.closeBtn}
+          onPress={() => {
+            setUri(null);
+            setVideoUri(null);
+            setActiveCapture("none");
+          }}
+        >
+          <FontAwesome6 name="xmark-circle" size={32} color="#444" />
+        </TouchableOpacity>
+      )}
+      {activeCapture !== "none" ? (
+        renderMedia()
+      ) : (
+        <ScrollView contentContainerStyle={styles.container}>
+          {renderMedia()}
+        </ScrollView>
+      )}
+    </View>
   );
 }
 
@@ -321,4 +360,24 @@ const styles = StyleSheet.create({
     backgroundColor: "#000",
     marginBottom: 12,
   },
+  closeBtn: {
+    position: 'absolute',
+    top: 40,
+    right: 16,
+    zIndex: 10,
+    backgroundColor: '#ffffffcc',
+    padding: 6,
+    borderRadius: 20,
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 3,
+  },
+  fullScreenCenter: {
+  flex: 1,
+  justifyContent: "center",
+  alignItems: "center",
+  backgroundColor: "#f8fafc",
+},
 });

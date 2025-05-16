@@ -93,7 +93,7 @@ const PlantDetailPage = () => {
         style={styles.fab}
         onPress={() => router.push(`/plants/${plant.id}/chatbot`)}
       >
-       <FontAwesome6 name="message" />
+       <FontAwesome6 name="message" size={24} color="#fff" />
       </TouchableOpacity>
     </>
   );
@@ -106,8 +106,8 @@ const styles = StyleSheet.create({
     right: 20,
     backgroundColor: '#4CAF50',
     borderRadius: 28,
-    width: 56,
-    height: 56,
+    width: 70,
+    height: 70,
     justifyContent: 'center',
     alignItems: 'center',
     elevation: 6,

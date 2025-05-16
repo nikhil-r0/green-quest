@@ -7,22 +7,24 @@ import {
   TouchableOpacity,
   Dimensions,
   ScrollView,
-  ActivityIndicator,
   RefreshControl,
+  Alert,
 } from "react-native";
 import * as Location from "expo-location";
 import { auth } from "@/firebaseConfig";
 import { api } from "@/constants/Api";
+import LoadingIcon from "@/components/LoadingIcon";
+import LottieView from "lottie-react-native";
 
 const BASE_URL = api;
 const windowWidth = Dimensions.get("window").width;
 const isLargeScreen = windowWidth > 600;
 
 type Quest = {
-  id: string; // added id for API calls & keys
+  id: string;
   reward_points: number;
   type: string;
-  status?: string; // optionally track assigned or not
+  status?: string;
 };
 
 export default function LandingPage() {
@@ -30,6 +32,7 @@ export default function LandingPage() {
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState("");
   const [refreshing, setRefreshing] = useState(false);
+  const [showAnimation, setShowAnimation] = useState(false);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -72,7 +75,6 @@ export default function LandingPage() {
     }
   };
 
-  // Accept quest API call
   const acceptQuest = async (questId: string) => {
     try {
       const res = await fetch(`${BASE_URL}/user/accept`, {
@@ -91,15 +93,22 @@ export default function LandingPage() {
         throw new Error(errJson.error || "Failed to accept quest");
       }
 
-      alert("Quest accepted!");
+      // System alert
+      Alert.alert("🎉 Quest Accepted!", "You’ve successfully accepted the quest.", [
+        {
+          text: "OK",
+          onPress: () => {
+            setShowAnimation(true);
+            setTimeout(() => setShowAnimation(false), 2000);
+          },
+        },
+      ]);
 
-      // Update local state to mark quest as assigned
+      // Update UI
       setQuests((prev) =>
-        prev.map((q) =>
-          q.id === questId ? { ...q, status: "assigned" } : q
-        )
+        prev.map((q) => (q.id === questId ? { ...q, status: "assigned" } : q))
       );
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
       alert(err.message || "Failed to accept quest");
     }
@@ -110,67 +119,87 @@ export default function LandingPage() {
   }, []);
 
   return (
-    <ScrollView
-      contentContainerStyle={styles.container}
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-      }
-    >
-      {/* Landing Section */}
-      <View style={styles.landingSection}>
-        <View style={styles.leftContainer}>
-          <Text style={styles.title}>
-            WELCOME TO <Text style={styles.highlight}>GREEN QUEST</Text>
-          </Text>
-          <Text style={styles.description}>
-            GreenQuest is a gamified mobile platform that makes urban greening fun, engaging, and impactful. Users can adopt plants, complete eco-friendly quests like watering and cleanup, and track plant growth using AI and crowdsourced data. With rewards, levels, and location-based challenges, GreenQuest transforms sustainability into an interactive everyday mission.
-          </Text>
-        </View>
-
-        <View style={styles.rightContainer}>
-          <Image
-            source={require('@/assets/images/landing.png')}
-            style={styles.image}
-            resizeMode="contain"
+    <View style={{ flex: 1 }}>
+      {/* Lottie Animation Overlay */}
+      {showAnimation && (
+        <View style={styles.lottieOverlay}>
+          <LottieView
+            source={require("@/assets/animations/happy.json")}
+            autoPlay
+            loop={false}
+            style={{ width: 200, height: 200 }}
           />
         </View>
-      </View>
+      )}
 
-      {/* Quests Section */}
-      <View style={styles.questSection}>
-        <Text style={styles.questTitle}>Quests</Text>
-        {loading ? (
-          <ActivityIndicator size="large" color="#00aa00" />
-        ) : fetchError ? (
-          <Text style={{ color: "red" }}>{fetchError}</Text>
-        ) : (
-          <View>
-            {quests.length > 0 ? (
-              quests.map((quest) => (
-                <View key={quest.id} style={styles.questCard}>
-                  <Text style={styles.questType}>{quest.type}</Text>
-                  <Text style={styles.questPoints}>{quest.reward_points} pts</Text>
-                  {quest.status !== "assigned" ? (
-                    <TouchableOpacity
-                      style={styles.acceptButton}
-                      onPress={() => acceptQuest(quest.id)}
-                    >
-                      <Text style={styles.acceptButtonText}>Accept</Text>
-                    </TouchableOpacity>
-                  ) : (
-                    <Text style={{ marginTop: 10, color: "#4CAF50", fontWeight: "bold" }}>
-                      Assigned
-                    </Text>
-                  )}
-                </View>
-              ))
-            ) : (
-              <Text style={styles.noQuestsText}>No quests available.</Text>
-            )}
+      <ScrollView
+        contentContainerStyle={styles.container}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+      >
+        {/* Landing Section */}
+        <View style={styles.landingSection}>
+          <View style={styles.leftContainer}>
+            <Text style={styles.title}>
+              WELCOME TO <Text style={styles.highlight}>GREEN QUEST</Text>
+            </Text>
+            <Text style={styles.description}>
+              GreenQuest is a gamified mobile platform that makes urban greening fun, engaging,
+              and impactful. Users can adopt plants, complete eco-friendly quests like watering and
+              cleanup, and track plant growth using AI and crowdsourced data.
+            </Text>
           </View>
-        )}
-      </View>
-    </ScrollView>
+
+          <View style={styles.rightContainer}>
+            <Image
+              source={require("@/assets/images/landing.png")}
+              style={styles.image}
+              resizeMode="contain"
+            />
+          </View>
+        </View>
+
+        {/* Quests Section */}
+        <View style={styles.questSection}>
+          <Text style={styles.questTitle}>Quests</Text>
+          {loading ? (
+            <LoadingIcon />
+          ) : fetchError ? (
+            <Text style={{ color: "red" }}>{fetchError}</Text>
+          ) : (
+            <View>
+              {quests.length > 0 ? (
+                quests.map((quest) => (
+                  <View key={quest.id} style={styles.questCard}>
+                    <Text style={styles.questType}>{quest.type}</Text>
+                    <Text style={styles.questPoints}>{quest.reward_points} pts</Text>
+                    {quest.status !== "assigned" ? (
+                      <TouchableOpacity
+                        style={styles.acceptButton}
+                        onPress={() => acceptQuest(quest.id)}
+                      >
+                        <Text style={styles.acceptButtonText}>Accept</Text>
+                      </TouchableOpacity>
+                    ) : (
+                      <Text
+                        style={{
+                          marginTop: 10,
+                          color: "#4CAF50",
+                          fontWeight: "bold",
+                        }}
+                      >
+                        Assigned
+                      </Text>
+                    )}
+                  </View>
+                ))
+              ) : (
+                <Text style={styles.noQuestsText}>No quests available.</Text>
+              )}
+            </View>
+          )}
+        </View>
+      </ScrollView>
+    </View>
   );
 }
 
@@ -262,5 +291,14 @@ const styles = StyleSheet.create({
   acceptButtonText: {
     color: "#fff",
     fontWeight: "bold",
+  },
+  lottieOverlay: {
+    position: "absolute",
+    top: "40%",
+    left: "50%",
+    transform: [{ translateX: -100 }, { translateY: -100 }],
+    zIndex: 99,
+    backgroundColor: "transparent",
+    pointerEvents: "none",
   },
 });

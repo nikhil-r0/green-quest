@@ -32,6 +32,22 @@ export default function ProfileScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const router = useRouter();
+  const [showLeaderboard, setShowLeaderboard] = useState(false);
+  const [leaderboardData, setLeaderboardData] = useState([]);
+
+  const fetchLeaderboard = async () => {
+    try {
+      const q = query(collection(db, 'Users'));
+      const snapshot = await getDocs(q);
+      const users = snapshot.docs
+        .map(doc => ({ id: doc.id, ...doc.data() }))
+        .sort((a, b) => (b.eco_points || 0) - (a.eco_points || 0)); // Descending
+      setLeaderboardData(users);
+    } catch (error) {
+      console.error('Error fetching leaderboard:', error);
+    }
+  };
+  
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -115,6 +131,25 @@ export default function ProfileScreen() {
         style={styles.headerImage}
         resizeMode="cover"
       >
+        <Pressable
+          onPress={async () => {
+            await fetchLeaderboard();
+            setShowLeaderboard(true);
+          }}
+          style={{
+            position: 'absolute',
+            top: 40,
+            right: 20,
+            backgroundColor: '#2563eb',
+            paddingVertical: 6,
+            paddingHorizontal: 12,
+            borderRadius: 12,
+            zIndex: 10,
+          }}
+        >
+          <Text style={{ color: 'white', fontWeight: 'bold' }}>🏆 Leaderboard</Text>
+        </Pressable>
+
         <View style={styles.overlay}>
           <Text style={styles.headerText}>
             Hello, {user?.name || 'Explorer'} 🌿
@@ -182,12 +217,88 @@ export default function ProfileScreen() {
           <Text style={styles.emptyText}>No quests accepted yet.</Text>
         )}
       </ScrollView>
+      {showLeaderboard && (
+  <View style={styles.leaderboardContainer}>
+    <View style={styles.leaderboardBox}>
+      <View style={styles.leaderboardHeader}>
+        <Text style={styles.leaderboardTitle}>🏆 Eco Leaderboard</Text>
+        <Pressable onPress={() => setShowLeaderboard(false)}>
+          <Text style={styles.closeButton}>✖</Text>
+        </Pressable>
+      </View>
+      <ScrollView style={{ maxHeight: 300 }}>
+        {leaderboardData.map((user, index) => (
+          <View key={user.id} style={styles.leaderboardItem}>
+            <Text style={styles.rank}>{index + 1}.</Text>
+            <Text style={styles.name}>{user.name || 'Anonymous'}</Text>
+            <Text style={styles.points}>{user.eco_points || 0} pts</Text>
+          </View>
+        ))}
+      </ScrollView>
+    </View>
+  </View>
+)}
+
     </View>
   );
 }
 
 // --- Styles ---
 const styles = StyleSheet.create({
+  leaderboardContainer: {
+    position: 'absolute',
+    top: 100,
+    left: 20,
+    right: 20,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 20,
+    borderRadius: 16,
+  },
+  leaderboardBox: {
+    backgroundColor: 'white',
+    width: '100%',
+    padding: 16,
+    borderRadius: 16,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 8,
+  },
+  leaderboardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  leaderboardTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#334155',
+  },
+  closeButton: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#ef4444',
+  },
+  leaderboardItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 6,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e2e8f0',
+  },
+  rank: {
+    width: 30,
+    fontWeight: '600',
+    color: '#64748b',
+  },
+  points: {
+    fontWeight: '600',
+    color: '#16a34a',
+  },
+  
   wrapper: {
     flex: 1,
     backgroundColor: '#f8fafc',

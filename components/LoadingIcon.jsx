@@ -1,10 +1,11 @@
 import LottieView from 'lottie-react-native';
+import { StyleSheet, View, Text } from 'react-native';
 
 export default function LoadingAnimation() {
   return (
     <View style={styles.container}>
       <LottieView
-        source={require('@/assets/animations/happy-tree.json')}
+        source={require('@/assets/animations/loading.json')}
         autoPlay
         loop
         style={{ width: 200, height: 200 }}
@@ -19,7 +20,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     flex: 1,
-    backgroundColor: '#f0fdf4',
+    backgroundColor: '#fff',
   },
   text: {
     marginTop: 12,

@@ -74,6 +74,7 @@ const PlantMap: React.FC = () => {
               }}
               title={plant.common_name}
               onPress={() => router.push({ pathname: '/plants/[plantId]', params: { plantId: plant.id } })}
+              image={require('@/assets/images/tree.png')}
             />
           ))}
         </MapView>
