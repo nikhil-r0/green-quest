@@ -23,7 +23,6 @@ export default function TabLayout() {
 
   useEffect(() => {
   const unsubscribe = onAuthStateChanged(auth, async (user) => {
-    console.log(user);
     if (user) {
       try {
         const userDocRef = doc(db, 'Users', user.uid);
@@ -32,19 +31,18 @@ export default function TabLayout() {
           const data = userSnap.data();
           setEcoCoins(data.eco_points || 0);
         } else {
-          setEcoCoins(0); // user doc doesn't exist
+          setEcoCoins(0); 
         }
       } catch (error) {
         console.error('Error fetching ecoCoins:', error);
         setEcoCoins(0);
       }
     } else {
-      // user signed out
       setEcoCoins(0);
     }
   });
 
-  return () => unsubscribe(); // cleanup listener on unmount
+  return () => unsubscribe(); 
 }, []);
 
 
@@ -171,13 +169,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   logoContainer: {
-    paddingLeft: 10,// ✅ Pushes image slightly away from screen edge
-    alignItems: 'flex-start', // ✅ Align image to left
+    paddingLeft: 10,
+    alignItems: 'flex-start',
     justifyContent: 'center',
   },
   logo: {
-    width: 100, // 🔼 Increased from 120 or 100 to 140
-    height: 100, // 🔼 Increased from 32 or 40 to 50
+    width: 100, 
+    height: 100,
   },
   headerRightContainer: {
   flexDirection: 'row',

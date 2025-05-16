@@ -4,6 +4,10 @@ import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@/firebaseConfig';
 import { ActivityIndicator, View, Text } from 'react-native';
 import PlantDetailsScreen from '@/components/PlantDetailsScreen';
+import { useRouter } from 'expo-router';
+import { TouchableOpacity, StyleSheet, Image } from 'react-native';
+import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
+
 
 // ✅ Inline Plant interface
 interface Plant {
@@ -27,6 +31,7 @@ const PlantDetailPage = () => {
   console.log('plantId:', plantId);
   const [plant, setPlant] = useState<Plant | null>(null);
   const [loading, setLoading] = useState(true);
+  const router = useRouter();
 
   useEffect(() => {
     const fetchPlant = async () => {
@@ -80,7 +85,34 @@ const PlantDetailPage = () => {
     );
   }
 
-  return <PlantDetailsScreen plant={plant} />;
+  return (
+    <>
+      <PlantDetailsScreen plant={plant} />
+  
+      <TouchableOpacity
+        style={styles.fab}
+        onPress={() => router.push(`/plants/${plant.id}/chatbot`)}
+      >
+       <FontAwesome6 name="message" />
+      </TouchableOpacity>
+    </>
+  );
 };
+
+const styles = StyleSheet.create({
+  fab: {
+    position: 'absolute',
+    bottom: 30,
+    right: 20,
+    backgroundColor: '#4CAF50',
+    borderRadius: 28,
+    width: 56,
+    height: 56,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 6,
+  },
+});
+
 
 export default PlantDetailPage;

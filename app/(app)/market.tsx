@@ -1,39 +1,59 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, FlatList, Image, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, FlatList, Image, TouchableOpacity, ScrollView, Alert } from 'react-native';
 
 const products = [
-  { id: '1', name: 'Fresh Chiquita Banana', price: '03.00', proweight: '1 kg', image: require('@/assets/images/logo.png') },
-  { id: '2', name: 'Organic Apple', price: '04.50', proweight: '1 kg', image: require('@/assets/images/logo.png') },
+  { id: '1', name: 'Fresh Chiquita Banana', price: 3.0, proweight: '1 kg', image: require('@/assets/images/logo.png') },
+  { id: '2', name: 'Organic Apple', price: 4.5, proweight: '1 kg', image: require('@/assets/images/logo.png') },
 ];
 
 export default function MarketScreen() {
-  const [cart, setCart] = useState({});
+  const [cart, setCart] = useState<{ [key: string]: number }>({});
+  const [ecoPoints, setEcoPoints] = useState(20); // starting EcoPoints
 
-  const increment = (id) => {
-    setCart((prev) => ({
-      ...prev,
-      [id]: (prev[id] || 0) + 1,
-    }));
+  const increment = (id: string) => {
+    const product = products.find((p) => p.id === id);
+    if (!product) return;
+
+    // Check if enough EcoPoints to buy one more
+    if (ecoPoints < product.price) {
+      Alert.alert('Not enough EcoPoints', 'You do not have enough EcoPoints to buy this product.');
+      return;
+    }
+
+    setCart((prev) => {
+      const newQuantity = (prev[id] || 0) + 1;
+      return { ...prev, [id]: newQuantity };
+    });
+
+    setEcoPoints((prev) => prev - product.price);
   };
 
-  const decrement = (id) => {
+  const decrement = (id: string) => {
+    const product = products.find((p) => p.id === id);
+    if (!product) return;
+
     setCart((prev) => {
-      const newCount = (prev[id] || 0) - 1;
-      if (newCount <= 0) {
+      const currentQty = prev[id] || 0;
+      if (currentQty <= 0) return prev;
+
+      const newQty = currentQty - 1;
+      if (newQty === 0) {
         const updatedCart = { ...prev };
         delete updatedCart[id];
+        setEcoPoints((prevPoints) => prevPoints + product.price);
         return updatedCart;
+      } else {
+        setEcoPoints((prevPoints) => prevPoints + product.price);
+        return { ...prev, [id]: newQty };
       }
-      return {
-        ...prev,
-        [id]: newCount,
-      };
     });
   };
 
   return (
     <ScrollView style={styles.container}>
+      <Text style={styles.heading}>EcoPoints: {ecoPoints.toFixed(2)}</Text>
       <Text style={styles.heading}>Products</Text>
+
       <FlatList
         data={products}
         keyExtractor={(item) => item.id}
@@ -47,13 +67,10 @@ export default function MarketScreen() {
               <Image source={item.image} style={styles.productImage} />
               <Text style={styles.productName}>{item.name}</Text>
               <Text style={styles.productWeight}>{item.proweight}</Text>
-              <Text style={styles.productPrice}>${item.price}</Text>
+              <Text style={styles.productPrice}>EcoPoints: {item.price.toFixed(2)}</Text>
 
               {quantity === 0 ? (
-                <TouchableOpacity
-                  style={styles.buyButton}
-                  onPress={() => increment(item.id)}
-                >
+                <TouchableOpacity style={styles.buyButton} onPress={() => increment(item.id)}>
                   <Text style={styles.buyButtonText}>Buy</Text>
                 </TouchableOpacity>
               ) : (
@@ -125,7 +142,7 @@ const styles = StyleSheet.create({
   productPrice: {
     fontSize: 14,
     fontWeight: "bold",
-    color: "#007BFF",
+    color: "#28a745",
     marginTop: 4,
   },
   buyButton: {

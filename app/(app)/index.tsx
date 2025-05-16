@@ -8,23 +8,34 @@ import {
   Dimensions,
   ScrollView,
   ActivityIndicator,
+  RefreshControl,
 } from "react-native";
 import * as Location from "expo-location";
 import { auth } from "@/firebaseConfig";
+import { api } from "@/constants/Api";
 
-const BASE_URL = "http://192.168.29.225:5000";
+const BASE_URL = api;
 const windowWidth = Dimensions.get("window").width;
 const isLargeScreen = windowWidth > 600;
 
 type Quest = {
+  id: string; // added id for API calls & keys
   reward_points: number;
   type: string;
+  status?: string; // optionally track assigned or not
 };
 
 export default function LandingPage() {
-  const [quests, setQuests] = useState([]);
+  const [quests, setQuests] = useState<Quest[]>([]);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState("");
+  const [refreshing, setRefreshing] = useState(false);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await getLocationAndFetchQuests();
+    setRefreshing(false);
+  };
 
   const getLocationAndFetchQuests = async () => {
     try {
@@ -52,11 +63,45 @@ export default function LandingPage() {
 
       const result = await res.json();
       setQuests(result.nearby_quests);
+      setFetchError("");
     } catch (error: any) {
       console.log(error);
       setFetchError("Failed to fetch quests.");
     } finally {
-      setLoading(false );
+      setLoading(false);
+    }
+  };
+
+  // Accept quest API call
+  const acceptQuest = async (questId: string) => {
+    try {
+      const res = await fetch(`${BASE_URL}/user/accept`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          user_id: auth.currentUser?.uid,
+          quest_id: questId,
+        }),
+      });
+
+      if (!res.ok) {
+        const errJson = await res.json();
+        throw new Error(errJson.error || "Failed to accept quest");
+      }
+
+      alert("Quest accepted!");
+
+      // Update local state to mark quest as assigned
+      setQuests((prev) =>
+        prev.map((q) =>
+          q.id === questId ? { ...q, status: "assigned" } : q
+        )
+      );
+    } catch (err) {
+      console.error(err);
+      alert(err.message || "Failed to accept quest");
     }
   };
 
@@ -65,8 +110,13 @@ export default function LandingPage() {
   }, []);
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      {/* Landing Section*/}
+    <ScrollView
+      contentContainerStyle={styles.container}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+      }
+    >
+      {/* Landing Section */}
       <View style={styles.landingSection}>
         <View style={styles.leftContainer}>
           <Text style={styles.title}>
@@ -96,13 +146,25 @@ export default function LandingPage() {
         ) : (
           <View>
             {quests.length > 0 ? (
-              quests.map((quest, index) => (
-              <View key={index} style={styles.questCard}>
-                <Text style={styles.questType}>{quest.type}</Text>
-                <Text style={styles.questPoints}>{quest.reward_points} pts</Text>
-              </View>
+              quests.map((quest) => (
+                <View key={quest.id} style={styles.questCard}>
+                  <Text style={styles.questType}>{quest.type}</Text>
+                  <Text style={styles.questPoints}>{quest.reward_points} pts</Text>
+                  {quest.status !== "assigned" ? (
+                    <TouchableOpacity
+                      style={styles.acceptButton}
+                      onPress={() => acceptQuest(quest.id)}
+                    >
+                      <Text style={styles.acceptButtonText}>Accept</Text>
+                    </TouchableOpacity>
+                  ) : (
+                    <Text style={{ marginTop: 10, color: "#4CAF50", fontWeight: "bold" }}>
+                      Assigned
+                    </Text>
+                  )}
+                </View>
               ))
-              ) : (
+            ) : (
               <Text style={styles.noQuestsText}>No quests available.</Text>
             )}
           </View>
@@ -147,26 +209,6 @@ const styles = StyleSheet.create({
     color: "#555",
     lineHeight: 22,
   },
-  buttonRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginTop: 20,
-  },
-  primaryButton: {
-    backgroundColor: "#f44336",
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 8,
-    marginRight: 16,
-  },
-  primaryButtonText: {
-    color: "#fff",
-    fontWeight: "bold",
-  },
-  secondaryButtonText: {
-    color: "#a30000",
-    fontWeight: "500",
-  },
   image: {
     width: isLargeScreen ? "100%" : windowWidth - 40,
     height: 250,
@@ -180,37 +222,45 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     marginBottom: 10,
   },
-  questItem: {
-    marginBottom: 5,
-    fontSize: 16,
-  },
   questCard: {
-  backgroundColor: "#F0F7F4",
-  padding: 16,
-  borderRadius: 12,
-  marginBottom: 12,
-  shadowColor: "#000",
-  shadowOffset: { width: 0, height: 1 },
-  shadowOpacity: 0.1,
-  shadowRadius: 3,
-  elevation: 2,
-  borderLeftWidth: 4,
-  borderLeftColor: "#4CAF50",
-},
-questType: {
-  fontSize: 16,
-  fontWeight: "600",
-  color: "#333",
-  marginBottom: 4,
-},
-questPoints: {
-  fontSize: 14,
-  color: "#4CAF50",
-  fontWeight: "500",
-},
-noQuestsText: {
-  fontSize: 16,
-  color: "#999",
-  fontStyle: "italic",
-},
+    backgroundColor: "#F0F7F4",
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 12,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 2,
+    borderLeftWidth: 4,
+    borderLeftColor: "#4CAF50",
+  },
+  questType: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#333",
+    marginBottom: 4,
+  },
+  questPoints: {
+    fontSize: 14,
+    color: "#4CAF50",
+    fontWeight: "500",
+  },
+  noQuestsText: {
+    fontSize: 16,
+    color: "#999",
+    fontStyle: "italic",
+  },
+  acceptButton: {
+    marginTop: 10,
+    backgroundColor: "#4CAF50",
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    alignSelf: "flex-start",
+  },
+  acceptButtonText: {
+    color: "#fff",
+    fontWeight: "bold",
+  },
 });
